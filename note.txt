@@ -1,0 +1,12 @@
+izQGoKbOAmIo4Gs1%2BqVZkVIgnL2l5NKTXLbnM%2ByFQ03L70cFYPn%2FPsB6rwpDW5IiWwFEkZ0zzoNe5D9BEavSPAstlWfX0lI%2F1PDyiKltkKL46oABw0FWdXhOSwA2%2BihqxPFga8zfcODGOp1CNezzMv5bEWgKz3T0yLZNyJ%2Fh%2B0o%3D
+
+
+{
+    id: "dev123", name: "longgh", 
+    tier: "FREE", lang: "ko", 
+    point: 999_999, highscore: 123.0,
+    msg: "resume", soundOn: true,
+}
+
+
+- việc 1: tối ưu lại game
