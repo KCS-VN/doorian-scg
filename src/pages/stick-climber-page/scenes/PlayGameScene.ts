@@ -36,6 +36,8 @@ export class PlayGameScene extends BaseGameScene {
 
     private modalContainer?: Phaser.GameObjects.Container;
 
+    private onMessageHandler?: (event: MessageEvent) => void;
+
     constructor() {
         super({ key: SCG_SCENES.PLAY_GAME_SCENE });
     }
@@ -59,7 +61,34 @@ export class PlayGameScene extends BaseGameScene {
         this.createGameUI(width, height);
 
         // Nhận sự kiện từ React Native
-        window.addEventListener('message', (event) => {
+        // window.addEventListener('message', (event) => {
+        //     try {
+        //         const data = JSON.parse(event.data);
+
+        //         switch (data.type) {
+        //             case MESSAGE_KEYS.WATCH_ADS_GET_MORE_PLAY_OKE:
+        //                 console.log('Người chơi xem ads thành công ✅');
+        //                 this.modalContainer?.destroy();
+        //                 this.restartGame();
+        //                 resumeAllSounds(this);
+        //                 break;
+
+        //             case MESSAGE_KEYS.WATCH_ADS_GET_MORE_PLAY_FAILED:
+        //                 console.log('Người chơi xem ads thất bại ❌');
+        //                 resumeAllSounds(this);
+        //                 break;
+        //             case MESSAGE_KEYS.PAUSE_SOUND:
+        //                 pauseAllSounds(this);
+        //                 break;
+
+        //             default:
+        //                 console.log('Message không xác định:', data.type);
+        //         }
+        //     } catch (err) {
+        //         console.error('Lỗi parse message từ React Native', err);
+        //     }
+        // });
+        this.onMessageHandler = (event: MessageEvent) => {
             try {
                 const data = JSON.parse(event.data);
 
@@ -67,6 +96,7 @@ export class PlayGameScene extends BaseGameScene {
                     case MESSAGE_KEYS.WATCH_ADS_GET_MORE_PLAY_OKE:
                         console.log('Người chơi xem ads thành công ✅');
                         this.modalContainer?.destroy();
+                        this.modalContainer = undefined;
                         this.restartGame();
                         resumeAllSounds(this);
                         break;
@@ -75,6 +105,7 @@ export class PlayGameScene extends BaseGameScene {
                         console.log('Người chơi xem ads thất bại ❌');
                         resumeAllSounds(this);
                         break;
+
                     case MESSAGE_KEYS.PAUSE_SOUND:
                         pauseAllSounds(this);
                         break;
@@ -85,18 +116,33 @@ export class PlayGameScene extends BaseGameScene {
             } catch (err) {
                 console.error('Lỗi parse message từ React Native', err);
             }
-        });
+        };
+
+        window.addEventListener('message', this.onMessageHandler);
+
+        this.isInputBlocked = false;
+        this.isHolding = false;
+        this.isDropping = false;
+
+        this.input.enabled = true;
     }
 
     update(_time: number, delta: number) {
         this.updateBirds(delta);
 
         if (this.isHolding) {
-            this.stickLength += delta * 0.4;
+            this.stickLength += delta * 0.8;
             this.stick.scaleY = this.stickLength;
             // giữ chân stick tại đỉnh cột
             this.stick.y =
                 this.leftColumn.y - this.leftColumn.displayHeight;
+        }
+    }
+
+    shutdown() {
+        if (this.onMessageHandler) {
+            window.removeEventListener('message', this.onMessageHandler);
+            this.onMessageHandler = undefined;
         }
     }
 
@@ -679,8 +725,11 @@ export class PlayGameScene extends BaseGameScene {
         const { width, height } = this.scale;
 
         // === Overlay ===
+        // const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5)
+        //     .setInteractive();
         const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5)
-            .setInteractive();
+            .setInteractive()
+            .setDepth(998);
 
         // === Box nền chính ===
         const boxWidth = Math.min(Math.max(width * 0.8, 200), 320);
@@ -819,6 +868,7 @@ export class PlayGameScene extends BaseGameScene {
                     this.addPoint(-1);
 
                     this.modalContainer?.destroy();
+                    this.modalContainer = undefined;
                     this.restartGame();
                 }
             }
@@ -838,6 +888,7 @@ export class PlayGameScene extends BaseGameScene {
                     playSound(this);
                     console.log('Exit button clicked');
                     this.modalContainer?.destroy();
+                    this.modalContainer = undefined;
                     this.scene.start(SCG_SCENES.MAIN_MENU_SCENE);
                 }
             }
