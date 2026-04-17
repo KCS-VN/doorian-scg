@@ -3,7 +3,7 @@ import type { TDataIndexURL } from '../../../types/user';
 import { BaseGameScene } from './BaseGameScene';
 import { showCloseConfirmModal } from '../helpers/showCloseConfirmModal';
 import { SCG_IMAGE_KEYS, SCG_SOUND_KEYS } from '../constants/assets';
-import { EVENT_KEYS, MESSAGE_KEYS } from '../constants/event';
+import { BRIDGE_EVENT_KEYS } from '../constants/event';
 import { pauseAllSounds, playSound, resumeAllSounds } from '../helpers/audio-play';
 import { SCG_SCENES } from '../constants/scene';
 import { createImage, createText } from '../helpers/phaser-ui';
@@ -60,40 +60,12 @@ export class PlayGameScene extends BaseGameScene {
         this.createTopUI(width, height);
         this.createGameUI(width, height);
 
-        // Nhận sự kiện từ React Native
-        // window.addEventListener('message', (event) => {
-        //     try {
-        //         const data = JSON.parse(event.data);
-
-        //         switch (data.type) {
-        //             case MESSAGE_KEYS.WATCH_ADS_GET_MORE_PLAY_OKE:
-        //                 console.log('Người chơi xem ads thành công ✅');
-        //                 this.modalContainer?.destroy();
-        //                 this.restartGame();
-        //                 resumeAllSounds(this);
-        //                 break;
-
-        //             case MESSAGE_KEYS.WATCH_ADS_GET_MORE_PLAY_FAILED:
-        //                 console.log('Người chơi xem ads thất bại ❌');
-        //                 resumeAllSounds(this);
-        //                 break;
-        //             case MESSAGE_KEYS.PAUSE_SOUND:
-        //                 pauseAllSounds(this);
-        //                 break;
-
-        //             default:
-        //                 console.log('Message không xác định:', data.type);
-        //         }
-        //     } catch (err) {
-        //         console.error('Lỗi parse message từ React Native', err);
-        //     }
-        // });
         this.onMessageHandler = (event: MessageEvent) => {
             try {
                 const data = JSON.parse(event.data);
 
                 switch (data.type) {
-                    case MESSAGE_KEYS.WATCH_ADS_GET_MORE_PLAY_OKE:
+                    case BRIDGE_EVENT_KEYS.RN_TO_WEB.WATCH_ADS_GET_MORE_PLAY_OKE:
                         console.log('Người chơi xem ads thành công ✅');
                         this.modalContainer?.destroy();
                         this.modalContainer = undefined;
@@ -101,12 +73,12 @@ export class PlayGameScene extends BaseGameScene {
                         resumeAllSounds(this);
                         break;
 
-                    case MESSAGE_KEYS.WATCH_ADS_GET_MORE_PLAY_FAILED:
+                    case BRIDGE_EVENT_KEYS.RN_TO_WEB.WATCH_ADS_GET_MORE_PLAY_FAILED:
                         console.log('Người chơi xem ads thất bại ❌');
                         resumeAllSounds(this);
                         break;
 
-                    case MESSAGE_KEYS.PAUSE_SOUND:
+                    case BRIDGE_EVENT_KEYS.RN_TO_WEB.PAUSE_SOUND:
                         pauseAllSounds(this);
                         break;
 
@@ -379,7 +351,7 @@ export class PlayGameScene extends BaseGameScene {
                 playSound(this);
                 window.ReactNativeWebView?.postMessage(
                     JSON.stringify({
-                        type: EVENT_KEYS.QUIT_GAME,
+                        type: BRIDGE_EVENT_KEYS.WEB_TO_RN.QUIT_GAME,
                         data: null,
                     })
                 );
@@ -587,6 +559,14 @@ export class PlayGameScene extends BaseGameScene {
         console.log('🎉 PERFECT! Doorian đậu trúng red zone');
         this.showPerfectEffect();
         this.addPoint(1);
+
+        // tang 1 diem
+        window.ReactNativeWebView?.postMessage(
+            JSON.stringify({
+                type: BRIDGE_EVENT_KEYS.WEB_TO_RN.UPDATE_SCORE,
+                data: { pointOfUse: 1 },
+            })
+        );
 
         checkPointAndShowModal({
             scene: this,
@@ -835,7 +815,7 @@ export class PlayGameScene extends BaseGameScene {
 
                     window.ReactNativeWebView?.postMessage(
                         JSON.stringify({
-                            type: EVENT_KEYS.WATCH_ADS_GET_MORE_PLAY,
+                            type: BRIDGE_EVENT_KEYS.WEB_TO_RN.WATCH_ADS_GET_MORE_PLAY,
                             data: null,
                         })
                     );
@@ -866,6 +846,14 @@ export class PlayGameScene extends BaseGameScene {
                     console.log('Continue DSP clicked');
                     playSound(this);
                     this.addPoint(-1);
+
+                    // tang -1 diem
+                    window.ReactNativeWebView?.postMessage(
+                        JSON.stringify({
+                            type: BRIDGE_EVENT_KEYS.WEB_TO_RN.RESUME_GAME,
+                            data: { pointOfUse: -1 },
+                        })
+                    );
 
                     this.modalContainer?.destroy();
                     this.modalContainer = undefined;
