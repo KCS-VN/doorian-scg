@@ -3,7 +3,7 @@ import type { TDataIndexURL } from '../../../types/user';
 import { BaseGameScene } from './BaseGameScene';
 import { showCloseConfirmModal } from '../helpers/showCloseConfirmModal';
 import { SCG_IMAGE_KEYS, SCG_SOUND_KEYS } from '../constants/assets';
-import { EVENT_KEYS, MESSAGE_KEYS } from '../constants/event';
+import { BRIDGE_EVENT_KEYS } from '../constants/event';
 import { pauseAllSounds, playSound, resumeAllSounds } from '../helpers/audio-play';
 import { SCG_SCENES } from '../constants/scene';
 import { createImage, createText } from '../helpers/phaser-ui';
@@ -36,6 +36,8 @@ export class PlayGameScene extends BaseGameScene {
 
     private modalContainer?: Phaser.GameObjects.Container;
 
+    private onMessageHandler?: (event: MessageEvent) => void;
+
     constructor() {
         super({ key: SCG_SCENES.PLAY_GAME_SCENE });
     }
@@ -58,24 +60,25 @@ export class PlayGameScene extends BaseGameScene {
         this.createTopUI(width, height);
         this.createGameUI(width, height);
 
-        // Nhận sự kiện từ React Native
-        window.addEventListener('message', (event) => {
+        this.onMessageHandler = (event: MessageEvent) => {
             try {
                 const data = JSON.parse(event.data);
 
                 switch (data.type) {
-                    case MESSAGE_KEYS.WATCH_ADS_GET_MORE_PLAY_OKE:
+                    case BRIDGE_EVENT_KEYS.RN_TO_WEB.WATCH_ADS_GET_MORE_PLAY_OKE:
                         console.log('Người chơi xem ads thành công ✅');
                         this.modalContainer?.destroy();
+                        this.modalContainer = undefined;
                         this.restartGame();
                         resumeAllSounds(this);
                         break;
 
-                    case MESSAGE_KEYS.WATCH_ADS_GET_MORE_PLAY_FAILED:
+                    case BRIDGE_EVENT_KEYS.RN_TO_WEB.WATCH_ADS_GET_MORE_PLAY_FAILED:
                         console.log('Người chơi xem ads thất bại ❌');
                         resumeAllSounds(this);
                         break;
-                    case MESSAGE_KEYS.PAUSE_SOUND:
+
+                    case BRIDGE_EVENT_KEYS.RN_TO_WEB.PAUSE_SOUND:
                         pauseAllSounds(this);
                         break;
 
@@ -85,18 +88,33 @@ export class PlayGameScene extends BaseGameScene {
             } catch (err) {
                 console.error('Lỗi parse message từ React Native', err);
             }
-        });
+        };
+
+        window.addEventListener('message', this.onMessageHandler);
+
+        this.isInputBlocked = false;
+        this.isHolding = false;
+        this.isDropping = false;
+
+        this.input.enabled = true;
     }
 
     update(_time: number, delta: number) {
         this.updateBirds(delta);
 
         if (this.isHolding) {
-            this.stickLength += delta * 0.4;
+            this.stickLength += delta * 0.8;
             this.stick.scaleY = this.stickLength;
             // giữ chân stick tại đỉnh cột
             this.stick.y =
                 this.leftColumn.y - this.leftColumn.displayHeight;
+        }
+    }
+
+    shutdown() {
+        if (this.onMessageHandler) {
+            window.removeEventListener('message', this.onMessageHandler);
+            this.onMessageHandler = undefined;
         }
     }
 
@@ -333,7 +351,7 @@ export class PlayGameScene extends BaseGameScene {
                 playSound(this);
                 window.ReactNativeWebView?.postMessage(
                     JSON.stringify({
-                        type: EVENT_KEYS.QUIT_GAME,
+                        type: BRIDGE_EVENT_KEYS.WEB_TO_RN.QUIT_GAME,
                         data: null,
                     })
                 );
@@ -542,6 +560,14 @@ export class PlayGameScene extends BaseGameScene {
         this.showPerfectEffect();
         this.addPoint(1);
 
+        // tang 1 diem
+        window.ReactNativeWebView?.postMessage(
+            JSON.stringify({
+                type: BRIDGE_EVENT_KEYS.WEB_TO_RN.UPDATE_SCORE,
+                data: { pointOfUse: 1 },
+            })
+        );
+
         checkPointAndShowModal({
             scene: this,
             deltaPoint: this.currentPoint - this.basePoint,
@@ -679,8 +705,11 @@ export class PlayGameScene extends BaseGameScene {
         const { width, height } = this.scale;
 
         // === Overlay ===
+        // const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5)
+        //     .setInteractive();
         const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5)
-            .setInteractive();
+            .setInteractive()
+            .setDepth(998);
 
         // === Box nền chính ===
         const boxWidth = Math.min(Math.max(width * 0.8, 200), 320);
@@ -786,7 +815,7 @@ export class PlayGameScene extends BaseGameScene {
 
                     window.ReactNativeWebView?.postMessage(
                         JSON.stringify({
-                            type: EVENT_KEYS.WATCH_ADS_GET_MORE_PLAY,
+                            type: BRIDGE_EVENT_KEYS.WEB_TO_RN.WATCH_ADS_GET_MORE_PLAY,
                             data: null,
                         })
                     );
@@ -818,7 +847,16 @@ export class PlayGameScene extends BaseGameScene {
                     playSound(this);
                     this.addPoint(-1);
 
+                    // tang -1 diem
+                    window.ReactNativeWebView?.postMessage(
+                        JSON.stringify({
+                            type: BRIDGE_EVENT_KEYS.WEB_TO_RN.RESUME_GAME,
+                            data: { pointOfUse: -1 },
+                        })
+                    );
+
                     this.modalContainer?.destroy();
+                    this.modalContainer = undefined;
                     this.restartGame();
                 }
             }
@@ -838,6 +876,7 @@ export class PlayGameScene extends BaseGameScene {
                     playSound(this);
                     console.log('Exit button clicked');
                     this.modalContainer?.destroy();
+                    this.modalContainer = undefined;
                     this.scene.start(SCG_SCENES.MAIN_MENU_SCENE);
                 }
             }

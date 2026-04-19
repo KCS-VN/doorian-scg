@@ -4,7 +4,7 @@ import { BaseGameScene } from './BaseGameScene';
 import { showCloseConfirmModal } from '../helpers/showCloseConfirmModal';
 import { showPlayConfirmModal } from '../helpers/showPlayConfirmModal';
 import { SCG_GAME, SCG_IMAGE_KEYS, SCG_SOUND_KEYS } from '../constants/assets';
-import { EVENT_KEYS } from '../constants/event';
+import { BRIDGE_EVENT_KEYS } from '../constants/event';
 import { playSound } from '../helpers/audio-play';
 import { SCG_SCENES } from '../constants/scene';
 import { createImage, createText } from '../helpers/phaser-ui';
@@ -14,6 +14,7 @@ import { checkPointAndShowModal } from '../helpers/checkPointAndShowModal';
 export class MainMenuScene extends BaseGameScene {
 
     currentPoint: number = 0;
+    private onMessageHandler?: (event: MessageEvent) => void;
 
     constructor() {
         super({ key: SCG_SCENES.MAIN_MENU_SCENE });
@@ -37,11 +38,44 @@ export class MainMenuScene extends BaseGameScene {
         this.createBirds(width, height);
         this.createTopUI(width, height);
         this.createBottomUI(width, height);
+
+        // viết lắng nghe RN ở đây
+        this.onMessageHandler = (event: MessageEvent) => {
+            try {
+                const data = JSON.parse(event.data);
+
+                switch (data.type) {
+                    case BRIDGE_EVENT_KEYS.RN_TO_WEB.START_GAME_OKE: {
+                        this.addPoint(-5);
+                        this.scene.start(SCG_SCENES.PLAY_GAME_SCENE);
+                        break;
+                    }
+                    case BRIDGE_EVENT_KEYS.RN_TO_WEB.START_GAME_FAILED: {
+                        alert('Start game failed');
+                        break;
+                    }
+                    default:
+                        console.log('Message không xác định:', data.type);
+                }
+            } catch (err) {
+                console.error('Lỗi parse message từ React Native', err);
+            }
+        };
+
+        window.addEventListener('message', this.onMessageHandler);
     }
 
     update(_time: number, delta: number) {
         this.updateBirds(delta);
     }
+
+    shutdown() {
+        if (this.onMessageHandler) {
+            window.removeEventListener('message', this.onMessageHandler);
+            this.onMessageHandler = undefined;
+        }
+    }
+
 
     createTopUI(width: number, height: number) {
         const user = sessionStorageGetItem('user') as TDataIndexURL;
@@ -183,7 +217,7 @@ export class MainMenuScene extends BaseGameScene {
                 playSound(this);
                 window.ReactNativeWebView?.postMessage(
                     JSON.stringify({
-                        type: EVENT_KEYS.QUIT_GAME,
+                        type: BRIDGE_EVENT_KEYS.WEB_TO_RN.QUIT_GAME,
                         data: null,
                     })
                 );
@@ -211,8 +245,16 @@ export class MainMenuScene extends BaseGameScene {
             onConfirm: () => {
                 console.log('Gọi api trừ DSP!');
                 console.log('Chuyển qua màn game!');
-                this.addPoint(-5);
-                this.scene.start(SCG_SCENES.PLAY_GAME_SCENE);
+                // this.addPoint(-5);
+                // this.scene.start(SCG_SCENES.PLAY_GAME_SCENE);
+
+                // nhắn lên RN là start game
+                window.ReactNativeWebView?.postMessage(
+                    JSON.stringify({
+                        type: BRIDGE_EVENT_KEYS.WEB_TO_RN.START_GAME,
+                        data: { pointOfUse: -5 },
+                    })
+                );
             }
         });
     }
