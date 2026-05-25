@@ -39,6 +39,11 @@ export class MainMenuScene extends BaseGameScene {
         this.createTopUI(width, height);
         this.createBottomUI(width, height);
 
+        // remove cũ trước khi add mới
+        if (this.onMessageHandler) {
+            window.removeEventListener('message', this.onMessageHandler);
+        }
+
         // viết lắng nghe RN ở đây
         this.onMessageHandler = (event: MessageEvent) => {
             try {
@@ -63,6 +68,14 @@ export class MainMenuScene extends BaseGameScene {
         };
 
         window.addEventListener('message', this.onMessageHandler);
+
+        // cleanup khi scene shutdown
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            if (this.onMessageHandler) {
+                window.removeEventListener('message', this.onMessageHandler);
+                this.onMessageHandler = undefined;
+            }
+        });
     }
 
     update(_time: number, delta: number) {
@@ -262,7 +275,6 @@ export class MainMenuScene extends BaseGameScene {
     async addPoint(delta: number) {
         // 1️⃣ Cập nhật biến điểm ngay lập tức
         this.currentPoint += delta;
-
         // 3️⃣ Đồng bộ sessionStorage
         const user = sessionStorageGetItem('user') as TDataIndexURL;
         if (user) {
