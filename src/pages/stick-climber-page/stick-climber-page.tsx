@@ -4,7 +4,7 @@ import { DataIndexURLSchema, type TDataIndexURL } from '../../types/user';
 import { getDeviceInfo } from '../../utils/device';
 import StickClimberGame from './components/StickClimberGame';
 import { sessionStorageGetItem, sessionStorageSaveItem } from '../../utils/session';
-import { EVENT_KEYS } from './constants/event';
+import { BRIDGE_EVENT_KEYS } from './constants/event';
 
 const PARAM_KEYS = {
     DATA: 'data',
@@ -71,7 +71,7 @@ const StickClimberPage = () => {
 
                         window.ReactNativeWebView?.postMessage(
                             JSON.stringify({
-                                type: EVENT_KEYS.QUIT_GAME,
+                                type: BRIDGE_EVENT_KEYS.WEB_TO_RN.QUIT_GAME,
                                 data: null,
                             })
                         );
