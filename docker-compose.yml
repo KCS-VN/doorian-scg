@@ -1,0 +1,8 @@
+version: '3'
+services:
+  web:
+    build: .
+    ports:
+      - '5173:5173'
+    image: anhtnkcs/physio-mvt:doorian-scg
+    container_name: doorian-scg
