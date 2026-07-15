@@ -76,11 +76,44 @@ export class MainMenuScene extends BaseGameScene {
                 this.onMessageHandler = undefined;
             }
         });
+
+        // viết lắng nghe RN ở đây
+        this.onMessageHandler = (event: MessageEvent) => {
+            try {
+                const data = JSON.parse(event.data);
+
+                switch (data.type) {
+                    case BRIDGE_EVENT_KEYS.RN_TO_WEB.START_GAME_OKE: {
+                        this.addPoint(-5);
+                        this.scene.start(SCG_SCENES.PLAY_GAME_SCENE);
+                        break;
+                    }
+                    case BRIDGE_EVENT_KEYS.RN_TO_WEB.START_GAME_FAILED: {
+                        alert('Start game failed');
+                        break;
+                    }
+                    default:
+                        console.log('Message không xác định:', data.type);
+                }
+            } catch (err) {
+                console.error('Lỗi parse message từ React Native', err);
+            }
+        };
+
+        window.addEventListener('message', this.onMessageHandler);
     }
 
     update(_time: number, delta: number) {
         this.updateBirds(delta);
     }
+
+    shutdown() {
+        if (this.onMessageHandler) {
+            window.removeEventListener('message', this.onMessageHandler);
+            this.onMessageHandler = undefined;
+        }
+    }
+
 
     shutdown() {
         if (this.onMessageHandler) {
